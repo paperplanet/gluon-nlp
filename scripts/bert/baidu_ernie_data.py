@@ -18,41 +18,47 @@
 # under the License.
 
 # pylint: disable=line-too-long
-"""GLUEBenchmark corpora."""
+"""Baidu ernie data, contains XNLI."""
 
 __all__ = ['BaiduErnieXNLI']
 
-import zipfile
 import os
-
-from mxnet.gluon.utils import download, check_sha1, _get_repo_file_url
-
+import sys
+import tarfile
 from gluonnlp.data.dataset import TSVDataset
 from gluonnlp.data.registry import register
 from gluonnlp.base import get_home_dir
+if sys.version_info[0] >= 3:
+    from urllib.request import urlretrieve
+else:
+    from urllib import urlretrieve
 
-_glue_s3_uri = 's3://apache-mxnet/gluon/dataset/Glue/'
+_baidu_ernie_data_url = 'https://ernie.bj.bcebos.com/task_data.tgz'
 
 class _BaiduErnieDataset(TSVDataset):
-    def __init__(self, root, segment, **kwargs):
+    def __init__(self, root, dataset_name, segment, **kwargs):
         root = os.path.expanduser(root)
         if not os.path.isdir(root):
             os.makedirs(root)
         self._root = root
-        filename = os.path.join(self._root, '%s.tsv' % segment)
+        download_data_path = os.path.join(self._root, 'task_data.tgz')
+        if not os.path.exists(download_data_path):
+            urlretrieve(_baidu_ernie_data_url, download_data_path)
+            tar_file = tarfile.open(download_data_path, mode='r:gz')
+            tar_file.extractall(self._root)
+        filename = os.path.join(self._root, 'task_data', dataset_name, '%s.tsv' % segment)
         super(_BaiduErnieDataset, self).__init__(filename, **kwargs)
-        pass
 
 
 @register(segment=['train', 'dev', 'test'])
 class BaiduErnieXNLI(_BaiduErnieDataset):
-    """ XNLI dataset
-
+    """ The XNLI dataset released from Baidu
+    <https://github.com/PaddlePaddle/LARK/tree/develop/ERNIE>.
     Parameters
     ----------
     segment : {'train', 'dev', 'test'}, default 'train'
         Dataset segment.
-    root : str, default '$MXNET_HOME/datasets/xnli'
+    root : str, default '$MXNET_HOME/datasets/baidu_ernie_task_data'
         Path to temp folder for storing data.
         MXNET_HOME defaults to '~/.mxnet'.
     return_all_fields : bool, default False
@@ -60,25 +66,25 @@ class BaiduErnieXNLI(_BaiduErnieDataset):
 
     Examples
     --------
-    >>> cola_dev = gluonnlp.data.BaiduErnieXNLI('dev', root='./datasets/xnli')
+    >>> xnli_dev = BaiduErnieXNLI('dev', root='./datasets/baidu_ernie_task_data/')
     -etc-
-    >>> len(cola_dev)
-    1043
-    >>> len(cola_dev[0])
+    >>> len(xnli_dev)
+    2490
+    >>> len(xnli_dev[0])
+    3
+    >>> xnli_dev[0]
+    ['他说，妈妈，我回来了。', '校车把他放下后，他立即给他妈妈打了电话。', 'neutral']
+    >>> xnli_test = BaiduErnieXNLI('test', root='./datasets/baidu_ernie_task_data/')
+    -etc-
+    >>> len(xnli_test)
+    5010
+    >>> len(xnli_test[0])
     2
-    >>> cola_dev[0]
-    ['The sailors rode the breeze clear of the rocks.', '1']
-    >>> cola_test = gluonnlp.data.BaiduErnieXNLI('test', root='./datasets/xnli')
-    -etc-
-    >>> len(cola_test)
-    1063
-    >>> len(cola_test[0])
-    1
-    >>> cola_test[0]
-    ['Bill whistled past the house.']
+    >>> xnli_test[0]
+    ['嗯，我根本没想过，但是我很沮丧，最后我又和他说话了。', '我还没有和他再次谈论。']
     """
     def __init__(self, segment='train',
-                 root=os.path.join(get_home_dir(), 'datasets', 'xnli'),
+                 root=os.path.join(get_home_dir(), 'datasets', 'baidu_ernie_data'),
                  return_all_fields=False):
         A_IDX, B_IDX, LABEL_IDX = 0, 1, 2
         if segment in ['train', 'dev']:
@@ -88,7 +94,6 @@ class BaiduErnieXNLI(_BaiduErnieDataset):
             field_indices = [A_IDX, B_IDX] if not return_all_fields else None
             num_discard_samples = 1
 
-        super(BaiduErnieXNLI, self).__init__(root, segment,
-                                       num_discard_samples=num_discard_samples,
-                                       field_indices=field_indices)
-
+        super(BaiduErnieXNLI, self).__init__(root, 'xnli', segment,
+                                             num_discard_samples=num_discard_samples,
+                                             field_indices=field_indices)
