@@ -13,12 +13,13 @@ import paddle.fluid as fluid
 
 from gluonnlp.model import BERTEncoder, BERTModel
 from gluonnlp.model.bert import bert_hparams
-from utils import convert_vocab, get_hash
+from utils import get_hash, tf_vocab_to_gluon_vocab, load_text_vocab
 
 
 BAIDU_LARK_PATH = '../../../../LARK'
 if not os.path.exists(BAIDU_LARK_PATH):
     os.system('git clone https://github.com/PaddlePaddle/LARK.git ' + BAIDU_LARK_PATH)
+# tested with commit hash f97e3c8581e36dc1979560d62f75df862acd9585
 sys.path = [os.path.join(BAIDU_LARK_PATH,'ERNIE')] + sys.path
 try:
     from model.ernie import ErnieConfig
@@ -119,7 +120,7 @@ def save_model(new_gluon_parameters, output_dir):
             data = line.strip().split("\t")
             vocab_f.writelines(data[0] + "\n")
     vocab_f.close()
-    vocab, reserved_token_idx_map = convert_vocab(os.path.join(output_dir, "vocab.txt"))
+    vocab = tf_vocab_to_gluon_vocab(load_text_vocab(os.path.join(output_dir, "vocab.txt")))
     # vocab serialization
     tmp_file_path = os.path.expanduser(os.path.join(output_dir, 'tmp'))
     if not os.path.exists(os.path.join(args.out_dir)):
@@ -184,19 +185,11 @@ def save_model(new_gluon_parameters, output_dir):
 
     # post processings for parameters:
     # - handle tied decoder weight
-    # - update word embedding for reserved tokens
     new_gluon_parameters['decoder.3.weight'] = new_gluon_parameters['word_embed.0.weight']
-    embedding = new_gluon_parameters['word_embed.0.weight']
-    for source_idx, dst_idx in reserved_token_idx_map:
-        source = embedding[source_idx].copy()
-        dst = embedding[dst_idx].copy()
-        embedding[source_idx][:] = dst
-        embedding[dst_idx][:] = source
-
     # set parameter data
     loaded_params = {}
     for name in params:
-        if name == 'word_embed.0.weight' or name == 'encoder.position_weight':
+        if name == 'word_embed.0.weight':
             arr = mx.nd.array(new_gluon_parameters[name][:params[name].shape[0]])
         else:
             arr = mx.nd.array(new_gluon_parameters[name])
@@ -230,7 +223,7 @@ def save_model(new_gluon_parameters, output_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gluon_bert_model_base", default='bert_12_768_12', type=str, help=".")
+    parser.add_argument("--gluon_bert_model_base", default='ernie_12_768_12', type=str, help=".")
     parser.add_argument("--init_pretraining_params", default='./ERNIE_stable-1.0.1/params', type=str, help=".")
     parser.add_argument("--ernie_config_path", default='./ERNIE_stable-1.0.1/ernie_config.json', type=str, help=".")
     parser.add_argument("--ernie_vocab_path", default='./ERNIE_stable-1.0.1/vocab.txt', type=str, help=".")

@@ -8,17 +8,15 @@ import os
 import mxnet as mx
 import json
 
-parser = argparse.ArgumentParser(description='Comparison script for BERT model in Tensorflow'
-                                             'and that in Gluon. This script works with '
-                                             'google/bert@f39e881b',
+parser = argparse.ArgumentParser(description='inference compare script for ernie model in gluon',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--input_file', type=str, default='input.txt',
+parser.add_argument('--input_file', type=str, default='input_cn.txt',
                     help='sample input file for testing')
 parser.add_argument('--cased', action='store_true',
                     help='if not set, inputs are converted to lower case')
 parser.add_argument('--gluon_dataset', type=str, default=None,
                     help='gluon dataset name')
-parser.add_argument('--gluon_model', type=str, default='bert_12_768_12',
+parser.add_argument('--gluon_model', type=str, default='ernie_12_768_12',
                     help='gluon model name')
 parser.add_argument('--gluon_parameter_file', type=str, default=None,
                     help='gluon parameter file name.')
@@ -42,8 +40,7 @@ bert, vocabulary = nlp.model.get_model(args.gluon_model,
                                        pretrained=not args.gluon_parameter_file,
                                        use_pooler=False,
                                        use_decoder=False,
-                                       use_classifier=False,
-                                       activation='relu')
+                                       use_classifier=False)
 if args.gluon_parameter_file:
     try:
         bert.cast('float16')
@@ -73,5 +70,7 @@ for i, seq in enumerate(bert_dataloader):
     print(out)
     import numpy as np
     paddle_np = np.load(os.path.expanduser(
-        '~/DG/NLP/Program/bert/pytorch-pretrained-BERT/ernie/test_npy/top_layer_emb.npy'))
+        'ernie_top_layer_emb.npy'))
     np.testing.assert_array_almost_equal(paddle_np, gluon_np, decimal=6)
+    break
+print("verify success")
