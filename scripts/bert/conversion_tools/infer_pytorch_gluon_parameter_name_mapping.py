@@ -34,19 +34,19 @@ import sys
 import gluonnlp as nlp
 import torch
 
-sys.path.insert(0, os.path.abspath(os.path.join(__file__, os.pardir)))
+sys.path.insert(0, os.path.abspath(os.path.join(__file__, os.pardir, os.pardir)))
 from utils import load_text_vocab, tf_vocab_to_gluon_vocab
 
 parser = argparse.ArgumentParser(description='Pytorch BERT Naming Convention',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--model', type=str, default='bert_12_768_12',
                     choices=['bert_12_768_12', 'bert_24_1024_16'], help='BERT model name')
-parser.add_argument('--dataset_name', type=str, default='wiki_cn_cased',
+parser.add_argument('--dataset_name', type=str, default='scibert_scivocab_uncased',
                     help='Dataset name')
 parser.add_argument('--pytorch_checkpoint_dir', type=str,
                     help='Path to Tensorflow checkpoint folder.')
 parser.add_argument('--debug', action='store_true', help='debugging mode')
-parser.add_argument('--out', default='gluon_to_pytorch_naming2.json',
+parser.add_argument('--out', default='gluon_to_pytorch_naming.json',
                     help='Output file to store gluon to pytorch name mapping.')
 args = parser.parse_args()
 logging.getLogger().setLevel(logging.DEBUG if args.debug else logging.INFO)
@@ -65,7 +65,7 @@ pytorch_vocab = tf_vocab_to_gluon_vocab(
 pytorch_parameters = {k: v.numpy() for k, v in pytorch_parameters.items()}
 
 # Assert that vocabularies are equal
-assert len(pytorch_vocab.idx_to_token) == len(vocab.idx_to_token)
+assert pytorch_vocab.idx_to_token == vocab.idx_to_token
 
 mapping = dict()
 
@@ -73,31 +73,13 @@ for name, param in parameters.items():
     found_match = False
     for pytorch_name, pytorch_param in pytorch_parameters.items():
         if param.shape == pytorch_param.shape:
-            if 'word_embed.0' in name: # check shape only, in case special token doesnt match
-                if (param.shape == pytorch_param.shape) and 'word_embeddings' in pytorch_name:
-                    if found_match:
-                        raise RuntimeError('Found multiple matches for {}. '
-                              'original match {},new match {}'.format(name,mapping[name], pytorch_name))
-                    else:
-                        found_match = True
-                        mapping.update({name: pytorch_name})
-            elif 'decoder.3.weight' in name: # check shape only, in case special token doesnt match
-                if (param.shape == pytorch_param.shape) and 'decoder' in pytorch_name:
-                    if found_match:
-                        raise RuntimeError('Found multiple matches for {}. '
-                              'original match {},new match {}'.format(name,mapping[name], pytorch_name))
-                    else:
-                        found_match = True
-                        mapping.update({name: pytorch_name})
-            else:
-                if (param == pytorch_param).all():
-                    if found_match:
-                        print('Found multiple matches for {}. '
-                              'Ignoring new match {}'.format(name, pytorch_name))
-                    else:
-                        found_match = True
-                        mapping.update({name: pytorch_name})
-
+            if (param == pytorch_param).all():
+                if found_match:
+                    print('Found multiple matches for {}. '
+                          'Ignoring new match {}'.format(name, pytorch_name))
+                else:
+                    found_match = True
+                    mapping.update({name: pytorch_name})
 
         # We don't break here, in case there are mulitple matches
 

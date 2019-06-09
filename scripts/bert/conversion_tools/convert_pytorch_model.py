@@ -32,7 +32,7 @@ from gluonnlp.model import BERTEncoder, BERTModel
 from gluonnlp.model.bert import bert_hparams
 
 sys.path.insert(0, os.path.abspath(os.path.join(__file__, os.pardir, os.pardir)))
-from utils import get_hash, load_text_vocab, tf_vocab_to_gluon_vocab, convert_vocab
+from utils import get_hash, load_text_vocab, tf_vocab_to_gluon_vocab
 
 parser = argparse.ArgumentParser(description='Conversion script for PyTorch BERT model',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -52,12 +52,10 @@ logging.getLogger().setLevel(logging.DEBUG if args.debug else logging.INFO)
 logging.info(args)
 
 # convert vocabulary
-vocab,reserved_token_idx_map = convert_vocab(args.vocab_file)
+vocab = tf_vocab_to_gluon_vocab(load_text_vocab(args.vocab_file))
 
 # vocab serialization
 tmp_file_path = os.path.expanduser(os.path.join(args.out_dir, 'tmp'))
-if not os.path.exists(os.path.join(args.out_dir)):
-    os.makedirs(os.path.join(args.out_dir))
 with open(tmp_file_path, 'w') as f:
     f.write(vocab.to_json())
 hash_full, hash_short = get_hash(tmp_file_path)
@@ -72,13 +70,8 @@ pytorch_parameters = torch.load(os.path.join(args.pytorch_checkpoint_dir, 'pytor
 pytorch_parameters = {k: v.numpy() for k, v in pytorch_parameters.items()}
 
 # Make sure vocab fits to model
-if pytorch_parameters['bert.embeddings.word_embeddings.weight'].shape[0] > \
-        len(vocab.idx_to_token):
-    pytorch_parameters['bert.embeddings.word_embeddings.weight'] = \
-        pytorch_parameters['bert.embeddings.word_embeddings.weight'][:len(vocab.idx_to_token)]
-    logging.warning("embedding array size greater than vocab")
-else:
-    raise ValueError("embedding array size smaller than vocab")
+assert pytorch_parameters['bert.embeddings.word_embeddings.weight'].shape[0] == len(
+    vocab.idx_to_token)
 
 # Load Mapping
 with open(args.gluon_pytorch_name_mapping, 'r') as f:
@@ -91,7 +84,7 @@ tf_config_names_to_gluon_config_names = {
     'hidden_dropout_prob': 'dropout',
     'hidden_size': 'units',
     'initializer_range': None,
-    # 'intermediate_size': 'hidden_size',
+    'intermediate_size': 'hidden_size',
     'max_position_embeddings': 'max_length',
     'num_attention_heads': 'num_heads',
     'num_hidden_layers': 'num_layers',
@@ -101,14 +94,11 @@ tf_config_names_to_gluon_config_names = {
 predefined_args = bert_hparams[args.model]
 with open(os.path.join(args.pytorch_checkpoint_dir, 'bert_config.json'), 'r') as f:
     tf_config = json.load(f)
-    if 'layer_norm_eps' in tf_config:
-        del tf_config['layer_norm_eps']
     assert len(tf_config) == len(tf_config_names_to_gluon_config_names)
     for tf_name, gluon_name in tf_config_names_to_gluon_config_names.items():
         if tf_name is None or gluon_name is None:
             continue
-        if gluon_name != 'max_length':
-            assert tf_config[tf_name] == predefined_args[gluon_name]
+        assert tf_config[tf_name] == predefined_args[gluon_name]
 
 # BERT encoder
 encoder = BERTEncoder(attention_cell=predefined_args['attention_cell'],
@@ -151,17 +141,6 @@ params = bert._collect_params_with_prefix()
 assert len(params) == len(pytorch_parameters), "Gluon model does not match PyTorch model. " \
     "Please fix the BERTModel hyperparameters"
 
-# post processings for parameters:
-# - handle tied decoder weight
-# - update word embedding for reserved tokens
-pytorch_parameters[mapping['decoder.3.weight']] = pytorch_parameters[mapping['word_embed.0.weight']]
-embedding = pytorch_parameters[mapping['word_embed.0.weight']]
-for source_idx, dst_idx in reserved_token_idx_map:
-    source = embedding[source_idx].copy()
-    dst = embedding[dst_idx].copy()
-    embedding[source_idx][:] = dst
-    embedding[dst_idx][:] = source
-
 # set parameter data
 loaded_params = {}
 for name in params:
@@ -180,19 +159,12 @@ for name in params:
 
         if 'cls.seq_relationship' in pytorch_name:
             pytorch_name = pytorch_name.replace('cls.seq_relationship', 'classifier')
-    if name == 'encoder.position_weight':
-        arr = mx.nd.array(pytorch_parameters[pytorch_name][:params[name].shape[0]])
-    else:
-        arr = mx.nd.array(pytorch_parameters[pytorch_name])
+
+    arr = mx.nd.array(pytorch_parameters[pytorch_name])
+
     assert arr.shape == params[name].shape
     params[name].set_data(arr)
     loaded_params[name] = True
-
-# post processings for parameters:
-# - handle tied decoder weight
-# - update word embedding for reserved tokens
-
-
 
 if len(params) != len(loaded_params):
     raise RuntimeError('The Gluon BERTModel comprises {} parameter arrays, '

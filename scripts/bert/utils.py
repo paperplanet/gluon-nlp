@@ -27,7 +27,7 @@ import json
 import mxnet as mx
 import gluonnlp
 
-__all__ = ['convert_vocab']
+__all__ = ['convert_vocab', 'tf_vocab_to_gluon_vocab', 'load_text_vocab']
 
 
 def convert_vocab(vocab_file):
@@ -82,6 +82,18 @@ def convert_vocab(vocab_file):
     converted_vocab = gluonnlp.vocab.BERTVocab.from_json(json_str)
     return converted_vocab, swap_idx
 
+import mxnet as mx
+import gluonnlp as nlp
+
+
+
+def tf_vocab_to_gluon_vocab(tf_vocab):
+    special_tokens = ['[UNK]', '[PAD]', '[SEP]', '[MASK]', '[CLS]']
+    assert all(t in tf_vocab for t in special_tokens)
+    counter = nlp.data.count_tokens(tf_vocab.keys())
+    vocab = nlp.vocab.BERTVocab(counter, token_to_idx=tf_vocab)
+    return vocab
+
 
 def get_hash(filename):
     sha1 = hashlib.sha1()
@@ -121,27 +133,6 @@ def profile(curr_step, start_step, end_step, profile_name='profile.json',
         mx.profiler.dump()
         if early_exit:
             exit()
-
-def load_vocab(vocab_file):
-    """Loads a vocabulary file into a dictionary."""
-    vocab = collections.OrderedDict()
-    index = 0
-    with io.open(vocab_file, 'r') as reader:
-        while True:
-            token = reader.readline()
-            if not token:
-                break
-            token = token.strip()
-            vocab[token] = index
-            index += 1
-    return vocab
-
-def tf_vocab_to_gluon_vocab(tf_vocab):
-    special_tokens = ['[UNK]', '[PAD]', '[SEP]', '[MASK]', '[CLS]']
-    assert all(t in tf_vocab for t in special_tokens)
-    counter = gluonnlp.data.count_tokens(tf_vocab.keys())
-    vocab = gluonnlp.vocab.BERTVocab(counter, token_to_idx=tf_vocab)
-    return vocab
 
 def load_text_vocab(vocab_file):
     """Loads a vocabulary file into a dictionary."""
