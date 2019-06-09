@@ -69,5 +69,9 @@ for i, seq in enumerate(bert_dataloader):
     out = bert(input_ids, type_ids,
                valid_length.astype('float32'))
     length = valid_length.asscalar()
-    b = [x.asnumpy().squeeze(0) for x in out]
-    print(b)
+    gluon_np = out.asnumpy().squeeze(0)
+    print(out)
+    import numpy as np
+    paddle_np = np.load(os.path.expanduser(
+        '~/DG/NLP/Program/bert/pytorch-pretrained-BERT/ernie/test_npy/top_layer_emb.npy'))
+    np.testing.assert_array_almost_equal(paddle_np, gluon_np, decimal=6)
