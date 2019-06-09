@@ -92,14 +92,14 @@ class BERTPositionwiseFFN(BasePositionwiseFFN):
 
     def __init__(self, units=512, hidden_size=2048, dropout=0.0, use_residual=True,
                  weight_initializer=None, bias_initializer='zeros',
-                 prefix=None, params=None):
+                 prefix=None, params=None, activation='gelu'):
         super(BERTPositionwiseFFN, self).__init__(units=units, hidden_size=hidden_size,
                                                   dropout=dropout, use_residual=use_residual,
                                                   weight_initializer=weight_initializer,
                                                   bias_initializer=bias_initializer,
                                                   prefix=prefix, params=params,
                                                   # extra configurations for BERT
-                                                  activation='gelu',
+                                                  activation=activation,
                                                   use_bert_layer_norm=True)
 
 
@@ -163,7 +163,7 @@ class BERTEncoder(BaseTransformerEncoder):
                  num_heads=4, scaled=True, dropout=0.0,
                  use_residual=True, output_attention=False, output_all_encodings=False,
                  weight_initializer=None, bias_initializer='zeros',
-                 prefix=None, params=None):
+                 prefix=None, params=None, activation='gelu'):
         super(BERTEncoder, self).__init__(attention_cell=attention_cell,
                                           num_layers=num_layers, units=units,
                                           hidden_size=hidden_size, max_length=max_length,
@@ -178,7 +178,8 @@ class BERTEncoder(BaseTransformerEncoder):
                                           positional_weight='learned',
                                           use_bert_encoder=True,
                                           use_layer_norm_before_dropout=False,
-                                          scale_embed=False)
+                                          scale_embed=False,
+                                          activation=activation)
 
 
 class BERTEncoderCell(BaseTransformerEncoderCell):
@@ -231,7 +232,7 @@ class BERTEncoderCell(BaseTransformerEncoderCell):
                  hidden_size=512, num_heads=4, scaled=True,
                  dropout=0.0, use_residual=True, output_attention=False,
                  weight_initializer=None, bias_initializer='zeros',
-                 prefix=None, params=None):
+                 prefix=None, params=None, activation='gelu'):
         super(BERTEncoderCell, self).__init__(attention_cell=attention_cell,
                                               units=units, hidden_size=hidden_size,
                                               num_heads=num_heads, scaled=scaled,
@@ -244,7 +245,8 @@ class BERTEncoderCell(BaseTransformerEncoderCell):
                                               attention_use_bias=True,
                                               attention_proj_use_bias=True,
                                               use_bert_layer_norm=True,
-                                              use_bert_ffn=True)
+                                              use_bert_ffn=True,
+                                              activation=activation)
 
 ###############################################################################
 #                                FULL MODEL                                   #
@@ -671,7 +673,8 @@ def get_bert_model(model_name=None, dataset_name=None, vocab=None,
                           dropout=predefined_args['dropout'],
                           output_attention=output_attention,
                           output_all_encodings=output_all_encodings,
-                          use_residual=predefined_args['use_residual'])
+                          use_residual=predefined_args['use_residual'],
+                          activation=kwargs.get('activation','gelu'))
     # bert_vocab
     from ..vocab import BERTVocab
     if dataset_name in ['wiki_cn', 'wiki_multilingual']:

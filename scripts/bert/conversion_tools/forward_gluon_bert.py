@@ -43,7 +43,7 @@ bert, vocabulary = nlp.model.get_model(args.gluon_model,
                                        use_pooler=False,
                                        use_decoder=False,
                                        use_classifier=False,
-                                       output_all_encodings=True)
+                                       activation='relu')
 if args.gluon_parameter_file:
     try:
         bert.cast('float16')

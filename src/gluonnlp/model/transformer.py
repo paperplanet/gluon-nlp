@@ -198,7 +198,8 @@ class BaseTransformerEncoderCell(HybridBlock):
                  dropout=0.0, use_residual=True, output_attention=False,
                  weight_initializer=None, bias_initializer='zeros',
                  attention_use_bias=False, attention_proj_use_bias=False,
-                 use_bert_layer_norm=False, use_bert_ffn=False, prefix=None, params=None):
+                 use_bert_layer_norm=False, use_bert_ffn=False, prefix=None, params=None,
+                 activation='gelu'):
         super(BaseTransformerEncoderCell, self).__init__(prefix=prefix, params=params)
         self._units = units
         self._num_heads = num_heads
@@ -221,16 +222,16 @@ class BaseTransformerEncoderCell(HybridBlock):
                                  prefix='proj_')
             self.ffn = self._get_positionwise_ffn(use_bert_ffn, units, hidden_size, dropout,
                                                   use_residual, weight_initializer,
-                                                  bias_initializer)
+                                                  bias_initializer, activation=activation)
             self.layer_norm = _get_layer_norm(use_bert_layer_norm, units)
 
     def _get_positionwise_ffn(self, use_bert, units, hidden_size, dropout, use_residual,
-                              weight_initializer, bias_initializer):
+                              weight_initializer, bias_initializer, activation='gelu'):
         from .bert import BERTPositionwiseFFN
         positionwise_ffn = BERTPositionwiseFFN if use_bert else PositionwiseFFN
         return positionwise_ffn(units=units, hidden_size=hidden_size, dropout=dropout,
                                 use_residual=use_residual, weight_initializer=weight_initializer,
-                                bias_initializer=bias_initializer)
+                                bias_initializer=bias_initializer, activation=activation)
 
 
     def hybrid_forward(self, F, inputs, mask=None):  # pylint: disable=arguments-differ
@@ -324,7 +325,7 @@ class BaseTransformerEncoder(HybridBlock, Seq2SeqEncoder):
                  weight_initializer=None, bias_initializer='zeros',
                  positional_weight='sinusoidal', use_bert_encoder=False,
                  use_layer_norm_before_dropout=False, scale_embed=True,
-                 prefix=None, params=None):
+                 prefix=None, params=None, activation='gelu'):
         super(BaseTransformerEncoder, self).__init__(prefix=prefix, params=params)
         assert units % num_heads == 0,\
             'In TransformerEncoder, The units should be divided exactly ' \
@@ -352,7 +353,8 @@ class BaseTransformerEncoder(HybridBlock, Seq2SeqEncoder):
             for i in range(num_layers):
                 cell = self._get_encoder_cell(use_bert_encoder, units, hidden_size, num_heads,
                                               attention_cell, weight_initializer, bias_initializer,
-                                              dropout, use_residual, scaled, output_attention, i)
+                                              dropout, use_residual, scaled, output_attention, i,
+                                              activation=activation)
                 self.transformer_cells.add(cell)
 
     def _get_positional(self, weight_type, max_length, units, initializer):
@@ -368,7 +370,7 @@ class BaseTransformerEncoder(HybridBlock, Seq2SeqEncoder):
 
     def _get_encoder_cell(self, use_bert, units, hidden_size, num_heads, attention_cell,
                           weight_initializer, bias_initializer, dropout, use_residual,
-                          scaled, output_attention, i):
+                          scaled, output_attention, i, activation='gelu'):
         from .bert import BERTEncoderCell
         cell = BERTEncoderCell if use_bert else TransformerEncoderCell
         return cell(units=units, hidden_size=hidden_size,
@@ -377,7 +379,8 @@ class BaseTransformerEncoder(HybridBlock, Seq2SeqEncoder):
                     bias_initializer=bias_initializer,
                     dropout=dropout, use_residual=use_residual,
                     scaled=scaled, output_attention=output_attention,
-                    prefix='transformer%d_'%i)
+                    prefix='transformer%d_'%i,
+                    activation=activation)
 
 
     def __call__(self, inputs, states=None, valid_length=None): #pylint: disable=arguments-differ
