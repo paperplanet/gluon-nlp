@@ -135,3 +135,24 @@ def load_vocab(vocab_file):
             vocab[token] = index
             index += 1
     return vocab
+
+def tf_vocab_to_gluon_vocab(tf_vocab):
+    special_tokens = ['[UNK]', '[PAD]', '[SEP]', '[MASK]', '[CLS]']
+    assert all(t in tf_vocab for t in special_tokens)
+    counter = gluonnlp.data.count_tokens(tf_vocab.keys())
+    vocab = gluonnlp.vocab.BERTVocab(counter, token_to_idx=tf_vocab)
+    return vocab
+
+def load_text_vocab(vocab_file):
+    """Loads a vocabulary file into a dictionary."""
+    vocab = collections.OrderedDict()
+    index = 0
+    with io.open(vocab_file, 'r') as reader:
+        while True:
+            token = reader.readline()
+            if not token:
+                break
+            token = token.strip()
+            vocab[token] = index
+            index += 1
+    return vocab
