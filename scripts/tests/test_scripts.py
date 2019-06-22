@@ -4,7 +4,7 @@ import sys
 import time
 
 import pytest
-
+import mxnet as mx
 
 @pytest.mark.serial
 @pytest.mark.remote_required
@@ -109,14 +109,17 @@ def test_sentiment_analysis_textcnn():
 @pytest.mark.skip_master
 @pytest.mark.remote_required
 @pytest.mark.gpu
+@pytest.mark.serial
 @pytest.mark.integration
 @pytest.mark.parametrize('method', ['beam_search', 'sampling'])
 def test_sampling(method):
-    args = ['--bos', 'I love it', '--beam_size', '2', '--print_num', '1', '--gpu', '0']
+    args = ['--bos', 'I love it', '--beam-size', '2', '--print-num', '1', '--gpu', '0']
     if method == 'beam_search':
-        args.append('--use-beam-search')
+        args.insert(0, 'beam-search')
+        args.extend(['--k', '50'])
     if method == 'sampling':
-        args.extend(['--use-sampling', '--temperature', '1.0'])
+        args.insert(0, 'random-sample')
+        args.extend(['--temperature', '1.0'])
     process = subprocess.check_call([sys.executable, './scripts/text_generation/sequence_sampling.py']
                                      + args)
     time.sleep(5)
@@ -184,7 +187,7 @@ def test_pretrain():
     process = subprocess.check_call([sys.executable, './scripts/bert/create_pretraining_data.py',
                                      '--input_file', './scripts/bert/sample_text.txt',
                                      '--output_dir', 'test/bert/data',
-                                     '--vocab', 'book_corpus_wiki_en_uncased',
+                                     '--dataset_name', 'book_corpus_wiki_en_uncased',
                                      '--max_seq_length', '128',
                                      '--max_predictions_per_seq', '20',
                                      '--dupe_factor', '5',
@@ -196,9 +199,10 @@ def test_pretrain():
         from mxnet.ndarray.contrib import adamw_update
         arguments = ['--log_interval', '2', '--data_eval', './test/bert/data/*.npz',
                      '--batch_size_eval', '8', '--ckpt_dir', './test/bert/ckpt', '--gpus', '0',
-                     '--num_steps', '20']
+                     '--num_steps', '20', '--num_buckets', '1']
         # test training
         process = subprocess.check_call([sys.executable, './scripts/bert/run_pretraining.py',
+                                         '--dtype', 'float32',
                                          '--data', './test/bert/data/*.npz',
                                          '--batch_size', '32',
                                          '--lr', '2e-5',
@@ -206,12 +210,12 @@ def test_pretrain():
                                          '--pretrained'] + arguments)
         # test evaluation
         process = subprocess.check_call([sys.executable, './scripts/bert/run_pretraining.py',
+                                         '--dtype', 'float32',
                                          '--pretrained'] + arguments)
 
         # test mixed precision training and use-avg-len
         from mxnet.ndarray.contrib import mp_adamw_update
         process = subprocess.check_call([sys.executable, './scripts/bert/run_pretraining.py',
-                                         '--dtype', 'float16',
                                          '--data', './test/bert/data/*.npz',
                                          '--batch_size', '4096',
                                          '--use_avg_len',
@@ -232,7 +236,7 @@ def test_pretrain_hvd():
     process = subprocess.check_call([sys.executable, './scripts/bert/create_pretraining_data.py',
                                      '--input_file', './scripts/bert/sample_text.txt',
                                      '--output_dir', 'test/bert/data',
-                                     '--vocab', 'book_corpus_wiki_en_uncased',
+                                     '--dataset_name', 'book_corpus_wiki_en_uncased',
                                      '--max_seq_length', '128',
                                      '--max_predictions_per_seq', '20',
                                      '--dupe_factor', '5',
@@ -243,37 +247,44 @@ def test_pretrain_hvd():
         # TODO(haibin) update test once MXNet 1.5 is released.
         from mxnet.ndarray.contrib import adamw_update
         import horovod.mxnet as hvd
-        arguments = ['--log_interval', '2', '--data_eval', './test/bert/data/*.npz',
+        arguments = ['--log_interval', '2',
                      '--batch_size_eval', '8', '--ckpt_dir', './test/bert/ckpt',
-                     '--num_steps', '20']
+                     '--num_steps', '20', '--num_buckets', '1']
         # test training
         process = subprocess.check_call([sys.executable, './scripts/bert/run_pretraining_hvd.py',
+                                         '--dtype', 'float32',
                                          '--data', './test/bert/data/*.npz',
+                                         '--data_eval', './test/bert/data/*.npz',
                                          '--batch_size', '32',
-                                         '--lr', '2e-5',
+                                         '--lr', '2e-5', '--eval_use_npz',
                                          '--warmup_ratio', '0.5',
                                          '--pretrained'] + arguments)
         # test training with raw data
         process = subprocess.check_call([sys.executable, './scripts/bert/run_pretraining_hvd.py',
+                                         '--dtype', 'float32',
                                          '--raw',
                                          '--max_seq_length', '128',
                                          '--max_predictions_per_seq', '20',
                                          '--masked_lm_prob', '0.15',
                                          '--short_seq_prob', '0.1',
                                          '--data', './scripts/bert/sample_text.txt',
+                                         '--data_eval', './scripts/bert/sample_text.txt',
                                          '--batch_size', '32',
                                          '--lr', '2e-5',
                                          '--warmup_ratio', '0.5',
                                          '--pretrained'] + arguments)
+
         # test evaluation
         process = subprocess.check_call([sys.executable, './scripts/bert/run_pretraining_hvd.py',
-                                         '--pretrained'] + arguments)
+                                         '--dtype', 'float32',
+                                         '--data_eval', './test/bert/data/*.npz',
+                                         '--eval_use_npz', '--pretrained'] + arguments)
 
         # test mixed precision training and use-avg-len
         from mxnet.ndarray.contrib import mp_adamw_update
         process = subprocess.check_call([sys.executable, './scripts/bert/run_pretraining_hvd.py',
-                                         '--dtype', 'float16',
                                          '--data', './test/bert/data/*.npz',
+                                         '--data_eval', './test/bert/data/*.npz',
                                          '--batch_size', '4096',
                                          '--use_avg_len',
                                          '--lr', '2e-5',
@@ -324,3 +335,21 @@ def test_finetune_train(dataset):
 def test_export(task):
     process = subprocess.check_call([sys.executable, './scripts/bert/export/export.py',
                                      '--task', task])
+
+@pytest.mark.serial
+@pytest.mark.gpu
+@pytest.mark.remote_required
+@pytest.mark.integration
+@pytest.mark.parametrize('sentencepiece', [False, True])
+def test_finetune_squad(sentencepiece):
+    arguments = ['--optimizer', 'adam', '--batch_size', '12',
+                 '--gpu', '0', '--epochs', '2', '--debug']
+    if sentencepiece:
+        # the downloaded bpe vocab
+        url = 'http://repo.mxnet.io/gluon/dataset/vocab/test-682b5d15.bpe'
+        f = mx.test_utils.download(url, overwrite=True)
+        arguments += ['--sentencepiece', f]
+
+    process = subprocess.check_call([sys.executable, './scripts/bert/finetune_squad.py']
+                                    + arguments)
+    time.sleep(5)
