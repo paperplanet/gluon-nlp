@@ -1,5 +1,3 @@
-# coding: utf-8
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,6 +15,31 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# pylint: disable=wildcard-import
-"""Hybrid BERT for deployment."""
-from . import hybrid_bert
+"""Various utility methods for Question Answering"""
+import math
+
+
+def warm_up_lr(base_lr, iteration, lr_warmup_steps):
+    """Returns learning rate based on current iteration.
+
+    This function is used to implement learning rate warm up technique.
+
+    math::
+
+      lr = min(base_lr, base_lr * (log(iteration) /  log(lr_warmup_steps)))
+
+    Parameters
+    ----------
+    base_lr : float
+        Initial learning rage
+    iteration : int
+        Current iteration number
+    lr_warmup_steps : int
+        Learning rate warm up steps
+
+    Returns
+    -------
+    learning_rate : float
+        Learning rate
+    """
+    return min(base_lr, base_lr * (math.log(iteration) / math.log(lr_warmup_steps)))

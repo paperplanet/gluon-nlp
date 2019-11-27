@@ -1,5 +1,6 @@
 import pytest
 import os
+import io
 import numpy as np
 import mxnet as mx
 import gluonnlp as nlp
@@ -118,3 +119,22 @@ def test_save_states(filename):
 def test_mkdir(dirname):
     nlp.utils.mkdir(dirname)
     assert os.path.isdir(os.path.expanduser(dirname))
+
+def test_glob():
+    f0 = io.open('test_glob_00', 'w')
+    f1 = io.open('test_glob_01', 'w')
+    f2 = io.open('test_glob_11', 'w')
+    files = nlp.utils.glob('test_glob_0*,test_glob_1*')
+    assert len(files) == 3
+    files_fake = nlp.utils.glob('fake_glob')
+    assert len(files_fake) == 0
+
+def test_version():
+    future_version = '10.11.12'
+    past_version = '0.1.2'
+    with pytest.raises(AssertionError):
+        nlp.utils.check_version(future_version, warning_only=False)
+    with pytest.raises(UserWarning):
+        nlp.utils.check_version(future_version, warning_only=True)
+    nlp.utils.check_version(past_version, warning_only=False)
+    nlp.utils.check_version(past_version, warning_only=True)

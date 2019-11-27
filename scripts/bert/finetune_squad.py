@@ -1,22 +1,3 @@
-"""
-SQuAD with Bidirectional Encoder Representations from Transformers
-
-=========================================================================================
-
-This example shows how to implement finetune a model with pre-trained BERT parameters for
-SQuAD, with Gluon NLP Toolkit.
-
-@article{devlin2018bert,
-  title={BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding},
-  author={Devlin, Jacob and Chang, Ming- \
-      Wei and Lee, Kenton and Toutanova, Kristina},
-  journal={arXiv preprint arXiv:1810.04805},
-  year={2018}
-}
-"""
-
-# coding=utf-8
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -34,6 +15,21 @@ SQuAD, with Gluon NLP Toolkit.
 # specific language governing permissions and limitations
 # under the License.
 # pylint:disable=redefined-outer-name,logging-format-interpolation
+"""
+SQuAD with Bidirectional Encoder Representations from Transformers
+==================================================================
+
+This example shows how to implement finetune a model with pre-trained BERT parameters for
+SQuAD, with Gluon NLP Toolkit.
+
+@article{devlin2018bert,
+  title={BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+  author={Devlin, Jacob and Chang, Ming- \
+      Wei and Lee, Kenton and Toutanova, Kristina},
+  journal={arXiv preprint arXiv:1810.04805},
+  year={2018}
+}
+"""
 
 import argparse
 import collections
@@ -236,7 +232,7 @@ lr = args.lr
 ctx = mx.cpu() if args.gpu is None else mx.gpu(args.gpu)
 
 accumulate = args.accumulate
-log_interval = args.log_interval * accumulate if accumulate else args.log_interval
+log_interval = args.log_interval
 if accumulate:
     log.info('Using gradient accumulation. Effective batch size = {}'.
              format(accumulate*batch_size))
@@ -296,11 +292,11 @@ batchify_fn = nlp.data.batchify.Tuple(
 net = BertForQA(bert=bert)
 if model_parameters:
     # load complete BertForQA parameters
-    net.load_parameters(model_parameters, ctx=ctx, cast_dtype=True)
+    nlp.utils.load_parameters(net, model_parameters, ctx=ctx, cast_dtype=True)
 elif pretrained_bert_parameters:
     # only load BertModel parameters
-    bert.load_parameters(pretrained_bert_parameters, ctx=ctx,
-                         ignore_extra=True, cast_dtype=True)
+    nlp.utils.load_parameters(bert, pretrained_bert_parameters, ctx=ctx,
+                              ignore_extra=True, cast_dtype=True)
     net.span_classifier.initialize(init=mx.init.Normal(0.02), ctx=ctx)
 elif pretrained:
     # only load BertModel parameters
@@ -429,7 +425,7 @@ def train():
 
             step_loss += ls.asscalar()
 
-            if (batch_id + 1) % log_interval == 0:
+            if (batch_id + 1) % (log_interval * (accumulate if accumulate else 1)) == 0:
                 toc = time.time()
                 log.info('Epoch: {}, Batch: {}/{}, Loss={:.4f}, lr={:.7f} Time cost={:.1f} Thoughput={:.2f} samples/s'  # pylint: disable=line-too-long
                          .format(epoch_id, batch_id, len(train_dataloader),

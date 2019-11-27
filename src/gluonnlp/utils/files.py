@@ -1,5 +1,3 @@
-# coding: utf-8
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -19,13 +17,33 @@
 # pylint:disable=redefined-outer-name,logging-format-interpolation
 """Utility functions for files."""
 
-__all__ = ['mkdir']
+__all__ = ['mkdir', 'glob']
 
 import os
 import warnings
 import logging
 import tempfile
+import glob as _glob
 from .. import _constants as C
+
+def glob(url, separator=','):
+    """Return a list of paths matching a pathname pattern.
+
+    The pattern may contain simple shell-style wildcards.
+    Input may also include multiple patterns, separated by separator.
+
+    Parameters
+    ----------
+    url : str
+        The name of the files
+    separator : str, default is ','
+        The separator in url to allow multiple patterns in the input
+    """
+    patterns = [url] if separator is None else url.split(separator)
+    result = []
+    for pattern in patterns:
+        result.extend(_glob.glob(os.path.expanduser(pattern.strip())))
+    return result
 
 def mkdir(dirname):
     """Create directory.
@@ -48,7 +66,7 @@ def mkdir(dirname):
             if e.errno != 17:
                 raise e
 
-class _TempFilePath(object):
+class _TempFilePath:
     """A TempFilePath that provides a path to a temporarily file, and automatically
     cleans up the temp file at exit.
     """
@@ -67,7 +85,7 @@ class _TempFilePath(object):
 def _transfer_file_s3(filename, s3_filename, upload=True):
     """Transfer a file between S3 and local file system."""
     try:
-        import boto3
+        import boto3  # pylint: disable=import-outside-toplevel
     except ImportError:
         raise ImportError('boto3 is required to support s3 URI. Please install'
                           'boto3 via `pip install boto3`')

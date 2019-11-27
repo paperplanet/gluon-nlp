@@ -1,5 +1,3 @@
-# coding: utf-8
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -22,7 +20,6 @@
 corpora and dataset files. Files can be streamed into formats that are
 ready for training and evaluation."""
 
-from __future__ import print_function
 
 import glob
 import multiprocessing
@@ -47,7 +44,7 @@ __all__ = [
     'DataStream', 'SimpleDataStream', 'DatasetStream', 'SimpleDatasetStream',
     'PrefetchingStream']
 
-class DataStream(object):
+class DataStream:
     """Abstract Data Stream Interface.
 
     DataStreams are useful to avoid loading big datasets to memory. A
@@ -155,6 +152,26 @@ class DatasetStream(DataStream):
         raise NotImplementedError
 
 
+class _PathDataset(mx.gluon.data.SimpleDataset):
+    """A simple Datasets containing a list of paths given the file_pattern.
+
+    Parameters
+    ----------
+    file_pattern: str
+        Path to the input text files.
+    """
+    def __init__(self, file_pattern):
+        if not isinstance(file_pattern, str):
+            raise TypeError('file_pattern must be str, but got %s'%type(file_pattern))
+        files = []
+        for pattern in file_pattern.split(','):
+            files.extend(glob.glob(os.path.expanduser(pattern.strip())))
+        files = sorted(files)
+        if len(files) == 0:
+            raise ValueError('Cannot find any file with path "%s"'%file_pattern)
+        super(_PathDataset, self).__init__(files)
+
+
 class SimpleDatasetStream(DatasetStream):
     """A simple stream of Datasets.
 
@@ -179,6 +196,7 @@ class SimpleDatasetStream(DatasetStream):
         All other keyword arguments are passed to the dataset constructor.
     """
     def __init__(self, dataset, file_pattern, file_sampler='random', **kwargs):
+        # TODO(haibin) reuse _SimpleDatasetPathStream here
         if not isinstance(file_pattern, str):
             raise TypeError('file_pattern must be str, but got %s'%type(file_pattern))
         self._dataset = dataset
@@ -211,7 +229,7 @@ class SimpleDatasetStream(DatasetStream):
             yield self._dataset(filename, **self._kwargs)
 
 
-class _Prefetcher(object):
+class _Prefetcher:
     """Internal shared prefetcher logic."""
     _dataq = None  # Data queue transmits prefetched elements
     _controlq = None  # Control queue to instruct thread / process shutdown
@@ -252,8 +270,7 @@ class _Prefetcher(object):
                 c = self._controlq.get(False)
                 if c is None:
                     break
-                else:
-                    raise RuntimeError('Got unexpected control code {}'.format(repr(c)))
+                raise RuntimeError('Got unexpected control code {}'.format(repr(c)))
             except queue.Empty:
                 pass
             except RuntimeError as e:
@@ -282,8 +299,7 @@ class _Prefetcher(object):
             self._controlq.put(None)
             if isinstance(next_error[0], StopIteration):
                 raise StopIteration
-            else:
-                return self._reraise(*next_error)
+            return self._reraise(*next_error)
 
     def _reraise(self, e, tb):
         print('Reraising exception from Prefetcher', file=sys.stderr)
@@ -360,8 +376,9 @@ class PrefetchingStream(DataStream):
 
     def __iter__(self):
         seed = random.getrandbits(32)
-        np_seed = np.random.randint(0, 2**32)
-        mx_seed = int(mx.nd.random.uniform(0, 2**32).asscalar())
+        # TODO should be possible to change to 64 bit in MXNet 1.6 (uses int64 by default?)
+        np_seed = np.random.randint(0, np.iinfo(np.int32).max)
+        mx_seed = int(mx.nd.random.uniform(0, np.iinfo(np.int32).max).asscalar())
         if self._multiprocessing:
             return _ProcessPrefetcher(self._stream, self._num_prefetch,
                                       seed=seed, np_seed=np_seed,

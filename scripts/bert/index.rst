@@ -3,51 +3,114 @@ Bidirectional Encoder Representations from Transformers
 
 :download:`Download scripts </model_zoo/bert.zip>`
 
+
 Reference: Devlin, Jacob, et al. "`Bert: Pre-training of deep bidirectional transformers for language understanding. <https://arxiv.org/abs/1810.04805>`_" arXiv preprint arXiv:1810.04805 (2018).
 
-Note: BERT model requires `nightly version of MXNet <https://mxnet.incubator.apache.org/versions/master/install/index.html?version=master&platform=Linux&language=Python&processor=CPU>`__. 
+BERT Model Zoo
+~~~~~~~~~~~~~~
 
 The following pre-trained BERT models are available from the **gluonnlp.model.get_model** API:
 
-+-------------------------------+----------------+-----------------+
-|                               | bert_12_768_12 | bert_24_1024_16 |
-+===============================+================+=================+
-| book_corpus_wiki_en_uncased   | ✓              | ✓               |
-+-------------------------------+----------------+-----------------+
-| book_corpus_wiki_en_cased     | ✓              | ✓               |
-+-------------------------------+----------------+-----------------+
-| wiki_multilingual_uncased     | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| wiki_multilingual_cased       | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| wiki_cn_cased                 | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| scibert_scivocab_uncased      | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| scibert_scivocab_cased        | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| scibert_basevocab_uncased     | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| scibert_basevocab_cased       | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| biobert_v1.0_pmc_cased        | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| biobert_v1.0_pubmed_cased     | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| biobert_v1.0_pubmed_pmc_cased | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| biobert_v1.1_pubmed_cased     | ✓              | x               |
-+-------------------------------+----------------+-----------------+
-| clinicalbert_uncased          | ✓              | x               |
-+-------------------------------+----------------+-----------------+
++-----------------------------------------+----------------+-----------------+
+|                                         | bert_12_768_12 | bert_24_1024_16 |
++=========================================+================+=================+
+| book_corpus_wiki_en_uncased             | ✓              | ✓               |
++-----------------------------------------+----------------+-----------------+
+| book_corpus_wiki_en_cased               | ✓              | ✓               |
++-----------------------------------------+----------------+-----------------+
+| openwebtext_book_corpus_wiki_en_uncased | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| wiki_multilingual_uncased               | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| wiki_multilingual_cased                 | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| wiki_cn_cased                           | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| scibert_scivocab_uncased                | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| scibert_scivocab_cased                  | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| scibert_basevocab_uncased               | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| scibert_basevocab_cased                 | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| biobert_v1.0_pmc_cased                  | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| biobert_v1.0_pubmed_cased               | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| biobert_v1.0_pubmed_pmc_cased           | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| biobert_v1.1_pubmed_cased               | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
+| clinicalbert_uncased                    | ✓              | x               |
++-----------------------------------------+----------------+-----------------+
 
 where **bert_12_768_12** refers to the BERT BASE model, and **bert_24_1024_16** refers to the BERT LARGE model.
 
-BERT for Sentence Classification
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: python
+
+    import gluonnlp as nlp; import mxnet as mx;
+    model, vocab = nlp.model.get_model('bert_12_768_12', dataset_name='book_corpus_wiki_en_uncased', use_classifier=False, use_decoder=False);
+    tokenizer = nlp.data.BERTTokenizer(vocab, lower=True);
+    transform = nlp.data.BERTSentenceTransform(tokenizer, max_seq_length=512, pair=False, pad=False);
+    sample = transform(['Hello world!']);
+    words, valid_len, segments = mx.nd.array([sample[0]]), mx.nd.array([sample[1]]), mx.nd.array([sample[2]]);
+    seq_encoding, cls_encoding = model(words, segments, valid_len);
+
+
+The pretrained parameters for dataset_name
+'openwebtext_book_corpus_wiki_en_uncased' were obtained by running the GluonNLP
+BERT pre-training script on OpenWebText.
+
+The pretrained parameters for dataset_name 'scibert_scivocab_uncased',
+'scibert_scivocab_cased', 'scibert_basevocab_uncased', 'scibert_basevocab_cased'
+were obtained by converting the parameters published by "Beltagy, I., Cohan, A.,
+& Lo, K. (2019). Scibert: Pretrained contextualized embeddings for scientific
+text. arXiv preprint `arXiv:1903.10676 <https://arxiv.org/abs/1903.10676>`_."
+
+The pretrained parameters for dataset_name 'biobert_v1.0_pmc',
+'biobert_v1.0_pubmed', 'biobert_v1.0_pubmed_pmc', 'biobert_v1.1_pubmed' were
+obtained by converting the parameters published by "Lee, J., Yoon, W., Kim, S.,
+Kim, D., Kim, S., So, C. H., & Kang, J. (2019). Biobert: pre-trained biomedical
+language representation model for biomedical text mining. arXiv preprint
+`arXiv:1901.08746 <https://arxiv.org/abs/1901.08746>`_."
+
+The pretrained parameters for dataset_name 'clinicalbert' were obtained by
+converting the parameters published by "Huang, K., Altosaar, J., & Ranganath, R.
+(2019). ClinicalBERT: Modeling Clinical Notes and Predicting Hospital
+Readmission. arXiv preprint `arXiv:1904.05342
+<https://arxiv.org/abs/1904.05342>`_."
+
+Additionally, GluonNLP supports the "`RoBERTa <https://arxiv.org/abs/1907.11692>`_" model:
+
++-----------------------------------------+-------------------+--------------------+
+|                                         | roberta_12_768_12 | roberta_24_1024_16 |
++=========================================+===================+====================+
+| openwebtext_ccnews_stories_books_cased  | ✓                 | ✓                  |
++-----------------------------------------+-------------------+--------------------+
+
+.. code-block:: python
+
+    import gluonnlp as nlp; import mxnet as mx;
+    model, vocab = nlp.model.get_model('roberta_12_768_12', dataset_name='openwebtext_ccnews_stories_books_cased', use_decoder=False);
+    tokenizer = nlp.data.GPT2BPETokenizer();
+    text = [vocab.bos_token] + tokenizer('Hello world!') + [vocab.eos_token];
+    seq_encoding = model(mx.nd.array([vocab[text]]))
+
+.. hint::
+
+   The pre-training, fine-tunining and export scripts are available `here. </_downloads/bert.zip>`__
+
+
+Sentence Classification
+~~~~~~~~~~~~~~~~~~~~~~~
 
 GluonNLP provides the following example script to fine-tune sentence classification with pre-trained
 BERT model.
+
+To enable mixed precision training with float16, set `--dtype` argument to `float16`.
+
+Results using `bert_12_768_12`:
 
 .. editing URL for the following table: https://tinyurl.com/y4n8q84w
 
@@ -61,13 +124,24 @@ BERT model.
 | Command             | `command <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/bert/finetuned_mrpc.sh>`__    | `command <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/bert/finetuned_rte.sh>`__    | `command <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/bert/finetuned_sst.sh>`__    | `command <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/bert/finetuned_mnli.sh>`__    | `command <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/bert/finetuned_xnli.sh>`__    |
 +---------------------+--------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------+
 
+Results using `roberta_12_768_12`:
 
-For all model settings above, we set learing rate = 2e-5, optimizer = bertadam, model = bert_12_768_12. Other tasks can be modeled with `--task_name` parameter.
+.. editing URL for the following table: https://www.shorturl.at/cjAO7
+
++---------------------+------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+| Dataset             | SST-2                                                                                                | MNLI-M/MM                                                                                                        |
++=====================+======================================================================================================+==================================================================================================================+
+| Validation Accuracy | 95.3%                                                                                                | 87.69%, 87.23%                                                                                                   |
++---------------------+------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+| Log                 | `log  <https://github.com/dmlc/web-data/blob/master/gluonnlp/logs/roberta/finetuned_sst.log>`__      | `log <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/roberta/mnli_1e-5-32.log>`__          |
++---------------------+------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+| Command             | `command <https://github.com/dmlc/web-data/blob/master/gluonnlp/logs/roberta/finetuned_sst.sh>`__    | `command  <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/roberta/finetuned_mnli.sh>`__    |
++---------------------+------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
 
 .. editing URL for the following table: https://tinyurl.com/y5rrowj3
 
-BERT for Question Answering on SQuAD
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Question Answering on SQuAD
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +---------+-----------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------+
 | Dataset | SQuAD 1.1                                                                                                                               | SQuAD 1.1                                                                                                                                | SQuAD 2.0                                                                                                                                |
@@ -101,12 +175,18 @@ To get the score of the dev data, you need to download the dev dataset (`dev-v2.
     $ python evaluate-v2.0.py dev-v2.0.json predictions.json
 
 
-BERT Pre-training
-~~~~~~~~~~~~~~~~~
+Pre-training from Scratch
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We also provide scripts for pre-training BERT with masked language modeling and and next sentence prediction.
 
 The pre-training data format expects: (1) One sentence per line. These should ideally be actual sentences, not entire paragraphs or arbitrary spans of text for the "next sentence prediction" task. (2) Blank lines between documents. You can find a sample pre-training text with 3 documents `here <https://github.com/dmlc/gluon-nlp/blob/master/scripts/bert/sample_text.txt>`__. You can perform sentence segmentation with an off-the-shelf NLP toolkit such as NLTK.
+
+
+.. hint::
+
+   You can download pre-processed English wikipedia dataset `here. <https://apache-mxnet.s3-accelerate.dualstack.amazonaws.com/gluon/dataset/enwiki-197b5d8d.zip>`__
+
 
 Pre-requisite
 +++++++++++++
@@ -136,11 +216,21 @@ You can use the following command to run pre-training with 2 hosts, 8 GPUs each:
              --mca plm_rsh_agent 'ssh -q -o StrictHostKeyChecking=no' \
              -x NCCL_MIN_NRINGS=8 -x NCCL_DEBUG=INFO -x HOROVOD_HIERARCHICAL_ALLREDUCE=1 \
              -x MXNET_SAFE_ACCUMULATION=1 --tag-output \
-             python run_pretraining_hvd.py --data='folder1/*.txt,folder2/*.txt,' \
+             python run_pretraining.py --data='folder1/*.txt,folder2/*.txt,' \
              --data_eval='dev_folder/*.txt,' --num_steps 1000000 \
-             --lr 1e-4 --batch_size 4096 --accumulate 4 --use_avg_len --raw
+             --lr 1e-4 --total_batch_size 256 --accumulate 1 --raw --comm_backend horovod
 
-Note that the batch_size argument sets the per-GPU batch size. When multiple hosts are present, please make sure you can ssh to these nodes without password.
+If you see out-of-memory error, try increasing --accumulate for gradient accumulation.
+
+When multiple hosts are present, please make sure you can ssh to these nodes without password.
+
+Alternatively, if horovod is not available, you could run pre-training with the MXNet native parameter server by setting --comm_backend and --gpus.
+
+.. code-block:: console
+
+    $ MXNET_SAFE_ACCUMULATION=1 python run_pretraining.py --comm_backend device --gpus 0,1,2,3,4,5,6,7 ...
+
+The BERT base model produced by gluonnlp pre-training script (`log <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/bert/bert_base_pretrain.log>`__) achieves 83.6% on MNLI-mm, 93% on SST-2, 87.99% on MRPC and 80.99/88.60 on SQuAD 1.1 validation set on the books corpus and English wikipedia dataset.
 
 Custom Vocabulary
 +++++++++++++++++
@@ -158,38 +248,13 @@ You can `train <//github.com/google/sentencepiece/tree/v0.1.82/python#model-trai
 .. code-block:: python
 
     import sentencepiece as spm
-    spm.SentencePieceTrainer.Train('--input=a.txt,b.txt --model_prefix=my_vocab --vocab_size=30000 --model_type BPE')
+    spm.SentencePieceTrainer.Train('--input=a.txt,b.txt --unk_id=0 --pad_id=3 --model_prefix=my_vocab --vocab_size=30000 --model_type=BPE')
 
-To use sentencepiece vocab for pre-training, please set --sentencepiece=my_vocab.model when using run_pretraining_hvd.py.
+To use sentencepiece vocab for pre-training, please set --sentencepiece=my_vocab.model when using run_pretraining.py.
 
-Improve Training Speed
-++++++++++++++++++++++
 
-The `create_pretraining_data.py` file generates pre-training data from raw text documents, stored as npz files. They help reduce data loading overhead and improves training speed.
-
-.. code-block:: console
-
-    $ python create_pretraining_data.py --input_file folder1/*.txt,folder2/*.txt --output_dir out --dataset_name book_corpus_wiki_en_uncased --dupe_factor 10 --num_workers $(nproc)
-
-Optionally, if you are using a custom sentencepiece vocab to generate pre-training data, please set --sentencepiece=my_vocab.model.
-
-To use the generated npz files for pre-training, remove the **--raw** argument, and update the argument for **--data** and **--data_eval** with the paths to the npz files when using run_pretraining_hvd.py.
-
-Run without Horovod
-+++++++++++++++++++
-
-Alternatively, if horovod is not available, you could run pre-training with the MXNet native parameter server. As of now, the training script only supports pre-generated data.
-
-.. code-block:: console
-
-    $ MXNET_SAFE_ACCUMULATION=1 python run_pretraining.py --gpus 0,1,2,3,4,5,6,7 --batch_size 4096 --accumulate 4 --lr 1e-4 \
-                                                          --data '/path/to/generated/train/*.npz' --num_steps 1000000 --use_avg_len \
-                                                          --log_interval=250 --data_eval '/path/to/generated/dev/*.npz'
-
-The BERT base model produced by gluonnlp pre-training script (`log <https://raw.githubusercontent.com/dmlc/web-data/master/gluonnlp/logs/bert/bert_base_pretrain.log>`__) achieves 83.6% on MNLI-mm, 93% on SST-2, 87.99% on MRPC and 80.99/88.60 on SQuAD 1.1 validation set on the books corpus and English wikipedia dataset.
-
-BERT for Named Entity Recognition
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Named Entity Recognition
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 GluonNLP provides training and prediction script for named entity recognition models.
 
@@ -219,14 +284,14 @@ This achieves Test F1 from `91.5` to `92.2` (`log <https://github.com/dmlc/web-d
 Export BERT for Deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Current export/export.py support exporting BERT models. Supported values for --task argument include classification, regression and question_answering.
+Current export.py support exporting BERT models. Supported values for --task argument include classification, regression and question answering.
 
 .. code-block:: console
 
-    $ python export/export.py --task classification --model_parameters /path/to/saved/ckpt.params --output_dir /path/to/output/dir/ --seq_length 128
+    $ python export.py --task classification --model_parameters /path/to/saved/ckpt.params --output_dir /path/to/output/dir/ --seq_length 128
 
 This will export the BERT model for classification to a symbol.json file, saved to the directory specified by --output_dir.
-The --model_parameters argument is optional. If not set, the .params file saved in the output directory will be randomly intialized parameters.
+The --model_parameters argument is optional. If not set, the .params file saved in the output directory will be randomly initialized parameters.
 
 BERT for Sentence or Tokens Embedding
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -252,3 +317,102 @@ The goal of this BERT Embedding is to obtain the token embedding from BERT's pre
        -0.42823148, -0.48873612], dtype=float32), array([-0.6576557 , -0.09822252,  0.1121515 , ..., -0.21743725,
        -0.1820574 , -0.16115054], dtype=float32)]
 
+Joint Intent Classification and Slot Labelling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Intent classification and slot labelling are two essential problems in Natural Language Understanding (NLU).
+In *intent classification*, the agent needs to detect the intention that the speaker's utterance conveys. For example, when the speaker says "Book a flight from Long Beach to Seattle", the intention is to book a flight ticket.
+In *slot labelling*, the agent needs to extract the semantic entities that are related to the intent. In our previous example,
+"Long Beach" and "Seattle" are two semantic constituents related to the flight, i.e., the origin and the destination.
+
+Essentially, *intent classification* can be viewed as a sequence classification problem and *slot labelling* can be viewed as a
+sequence tagging problem similar to Named-entity Recognition (NER). Due to their inner correlation, these two tasks are usually
+trained jointly with a multi-task objective function.
+
+Here's one example of the ATIS dataset, it uses the `IOB2 format <https://en.wikipedia.org/wiki/Inside%E2%80%93outside%E2%80%93beginning_(tagging)>`__.
+
++-----------+--------------------------+--------------+
+| Sentence  | Tags                     | Intent Label |
++===========+==========================+==============+
+| are       | O                        | atis_flight  |
++-----------+--------------------------+--------------+
+| there     | O                        |              |
++-----------+--------------------------+--------------+
+| any       | O                        |              |
++-----------+--------------------------+--------------+
+| flight    | O                        |              |
++-----------+--------------------------+--------------+
+| from      | O                        |              |
++-----------+--------------------------+--------------+
+| long      | B-fromloc.city_name      |              |
++-----------+--------------------------+--------------+
+| beach     | I-fromloc.city_name      |              |
++-----------+--------------------------+--------------+
+| to        | O                        |              |
++-----------+--------------------------+--------------+
+| columbus  | B-toloc.city_name        |              |
++-----------+--------------------------+--------------+
+| on        | O                        |              |
++-----------+--------------------------+--------------+
+| wednesday | B-depart_date.day_name   |              |
++-----------+--------------------------+--------------+
+| april     | B-depart_date.month_name |              |
++-----------+--------------------------+--------------+
+| sixteen   | B-depart_date.day_number |              |
++-----------+--------------------------+--------------+
+
+
+
+In this example, we demonstrate how to use GluonNLP to fine-tune a pretrained BERT model for joint intent classification and slot labelling. We
+choose to finetune a pretrained BERT model.  We use two datasets `ATIS <https://github.com/yvchen/JointSLU>`__ and `SNIPS <https://github.com/snipsco/nlu-benchmark/tree/master/2017-06-custom-intent-engines>`__.
+
+The training script requires python3 and the seqeval and tqdm packages:
+
+.. code-block:: console
+
+    $ pip3 install seqeval --user
+    $ pip3 install tqdm --user
+
+For the ATIS dataset, use the following command to run the experiment:
+
+.. code-block:: console
+
+    $ python3 finetune_icsl.py --gpu 0 --dataset atis
+
+It produces the final slot labelling F1 = `95.83%` and intent classification accuracy = `98.66%`
+
+For the SNIPS dataset, use the following command to run the experiment:
+
+.. code-block:: console
+
+    $ python3 finetune_icsl.py --gpu 0 --dataset snips
+
+It produces the final slot labelling F1 = `96.06%` and intent classification accuracy = `98.71%`
+
+Also, we train the models with three random seeds and report the mean/std.
+
+For ATIS
+
++--------------------------------------------------------------------------------------------+----------------+-------------+
+|                                             Models                                         | Intent Acc (%) | Slot F1 (%) |
++============================================================================================+================+=============+
+| `Intent Gating & self-attention, EMNLP 2018 <https://www.aclweb.org/anthology/D18-1417>`__ |    98.77       |  96.52      |
++--------------------------------------------------------------------------------------------+----------------+-------------+
+| `BLSTM-CRF + ELMo, AAAI 2019, <https://arxiv.org/abs/1811.05370>`__                        |    97.42       |  95.62      |
++--------------------------------------------------------------------------------------------+----------------+-------------+
+| `Joint BERT, Arxiv 2019, <https://arxiv.org/pdf/1902.10909.pdf>`__                         |    97.5        |  96.1       |
++--------------------------------------------------------------------------------------------+----------------+-------------+
+| Ours                                                                                       |    98.66±0.00  |  95.88±0.04 |
++--------------------------------------------------------------------------------------------+----------------+-------------+
+
+For SNIPS
+
++--------------------------------------------------------------------+----------------+-------------+
+|                                   Models                           | Intent Acc (%) | Slot F1 (%) |
++====================================================================+================+=============+
+| `BLSTM-CRF + ELMo, AAAI 2019 <https://arxiv.org/abs/1811.05370>`__ | 99.29          | 93.90       |
++--------------------------------------------------------------------+----------------+-------------+
+| `Joint BERT, Arxiv 2019 <https://arxiv.org/pdf/1902.10909.pdf>`__  | 98.60          | 97.00       |
++--------------------------------------------------------------------+----------------+-------------+
+| Ours                                                               | 98.81±0.13     | 95.94±0.10  |
++--------------------------------------------------------------------+----------------+-------------+
